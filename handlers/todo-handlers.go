@@ -127,3 +127,36 @@ func (th *TodoHandler) UpdateTask(rw http.ResponseWriter, r *http.Request) {
 	}
 	utilities.WriteResponse(rw, params)
 }
+
+func (th *TodoHandler) SearchTask(rw http.ResponseWriter, r *http.Request) {
+	fmt.Println("entering SearchTask")
+	rw.Header().Set("Content-Type", "application/json")
+	queryMap := r.URL.Query()
+	searchParam := queryMap.Get("query")
+	page := queryMap.Get("page")
+	limit := queryMap.Get("limit")
+	limitInt := 10
+	pageInt := 0
+	offset := 0
+	if len(page) != 0 && len(limit) != 0 {
+		limitInt, err := strconv.Atoi(limit)
+		if err != nil {
+			utilities.WriteError(fmt.Sprintf("Invalid limit passed %s", err.Error()), rw, http.StatusInternalServerError)
+			return
+		}
+		pageInt, err = strconv.Atoi(page)
+		if err != nil {
+			utilities.WriteError(fmt.Sprintf("Invalid lpage passed %s", err.Error()), rw, http.StatusInternalServerError)
+			return
+		}
+		offset = (pageInt - 1) * limitInt
+	}
+	todo, err := repository.SearchTodo(r.Context(), th.DB, searchParam, limitInt, offset)
+	if todo != nil {
+		json.NewEncoder(rw).Encode(todo)
+	} else {
+		errorMessage := fmt.Sprintf("There is no todo with text: %s : %s", searchParam, err.Error())
+		utilities.WriteError(errorMessage, rw, http.StatusNotFound)
+		return
+	}
+}

@@ -75,3 +75,24 @@ func UpdateTodo(ctx context.Context, db *sql.DB, params map[string]interface{}, 
 	return err
 
 }
+
+func SearchTodo(ctx context.Context, db *sql.DB, searchParam string, limit int, offset int) ([]*models.Todo, error) {
+	query := `select id, name, description, status, created_at from todo where to_tsvector('simple', name || ' ' || description) @@ to_tsquery('simple', $1) limit $2 offset $3`
+	fmt.Println(query)
+	var todos []*models.Todo
+	rows, err := db.QueryContext(ctx, query, searchParam, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var todo models.Todo
+		err = rows.Scan(&todo.Id, &todo.Name, &todo.Description, &todo.TaskStatus, &todo.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		todos = append(todos, &todo)
+	}
+	return todos, nil
+
+}
