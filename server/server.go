@@ -18,10 +18,15 @@ func StartServer() {
 	appHostAndPort := fmt.Sprintf("%s:%d", appConfig.Host, appConfig.Port)
 
 	db, err := config.DBinit(&appConfig.DBconfig)
+	authConfig := &config.AuthConfig{
+		JWTSecret:  appConfig.AuthConfig.JWTSecret,
+		AccessTTL:  appConfig.AuthConfig.AccessTTL,
+		RefreshTTL: appConfig.AuthConfig.RefreshTTL,
+	}
 	if err != nil {
 		panic("Cannot Start the application")
 	}
-	r := router.NewRouter(db)
+	r := router.NewRouter(db, authConfig)
 	serv := http.Server{
 		Addr:    appHostAndPort,
 		Handler: r,

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"todos/config"
 	"todos/models"
 	"todos/repository"
 	"todos/utilities"
@@ -14,12 +15,14 @@ import (
 )
 
 type TodoHandler struct {
-	DB *sql.DB
+	DB          *sql.DB
+	TokenConfig *config.AuthConfig
 }
 
-func NewTodoHandler(DB *sql.DB) *TodoHandler {
+func NewTodoHandler(DB *sql.DB, authConfig *config.AuthConfig) *TodoHandler {
 	todoHandler := new(TodoHandler)
 	todoHandler.DB = DB
+	todoHandler.TokenConfig = authConfig
 	return todoHandler
 }
 
@@ -89,7 +92,7 @@ func (th *TodoHandler) CreateTask(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rw.WriteHeader(http.StatusCreated)
-	response := models.CreateTodoResponse{
+	response := models.CreateResponse{
 		Message: "Todo created successfully",
 		Id:      v.Id,
 	}

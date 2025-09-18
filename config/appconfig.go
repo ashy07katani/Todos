@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/caarlos0/env/v10"
 	"github.com/joho/godotenv"
@@ -26,10 +27,17 @@ type DBconfig struct {
 	DBName   string `env:"NAME"`
 }
 
+type AuthConfig struct {
+	JWTSecret  string        `env:"JWT_SECRET"`
+	AccessTTL  time.Duration `env:"ACCESS_TTL"`
+	RefreshTTL time.Duration `env:"REFRESH_TTL"`
+}
+
 type AppConfig struct {
-	DBconfig DBconfig `envPrefix:"DB_"`
-	Host     string   `env:"APP_HOST"`
-	Port     int      `env:"APP_PORT"`
+	AuthConfig AuthConfig
+	DBconfig   DBconfig `envPrefix:"DB_"`
+	Host       string   `env:"APP_HOST"`
+	Port       int      `env:"APP_PORT"`
 }
 
 func DBinit(dbconfig *DBconfig) (*sql.DB, error) {
@@ -50,7 +58,7 @@ func LoadConfiguration() *AppConfig {
 	godotenv.Load("local.env")
 	appconfig := new(AppConfig)
 	if err := env.Parse(appconfig); err != nil {
-		panic("Failed to load environment variables")
+		panic(fmt.Sprintf("Failed to load environment variables %s", err.Error()))
 	}
 	return appconfig
 }
