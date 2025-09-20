@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"time"
+	"todos/mail"
 
 	"github.com/caarlos0/env/v10"
 	"github.com/joho/godotenv"
@@ -35,9 +36,10 @@ type AuthConfig struct {
 
 type AppConfig struct {
 	AuthConfig AuthConfig
-	DBconfig   DBconfig `envPrefix:"DB_"`
-	Host       string   `env:"APP_HOST"`
-	Port       int      `env:"APP_PORT"`
+	Mail       mail.Mail `envPrefix:"MAIL_"`
+	DBconfig   DBconfig  `envPrefix:"DB_"`
+	Host       string    `env:"APP_HOST"`
+	Port       int       `env:"APP_PORT"`
 }
 
 func DBinit(dbconfig *DBconfig) (*sql.DB, error) {

@@ -144,10 +144,14 @@ func InvalidateRefreshToken(ctx context.Context, db *sql.DB, hashedRefresh strin
 	return err
 }
 
-/*
- user_id
-ashish-tripathi(# token_hash varchar(1000),
-ashish-tripathi(# expires_at timestamp,
-ashish-tripathi(# revoked boolean default false)
+func IsEmailExists(ctx context.Context, db *sql.DB, forgot *models.ForgotPasswordRequest) (bool, error) {
+	query := `select count(*) from users where email = $1`
+	count := -1
+	res := db.QueryRowContext(ctx, query, forgot.Email)
 
-*/
+	err := res.Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}

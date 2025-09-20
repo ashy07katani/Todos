@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -111,7 +113,7 @@ func (th *TodoHandler) Refresh(rw http.ResponseWriter, r *http.Request) {
 	savedRefresh := new(models.SaveRefresh)
 	savedRefresh, err = repository.FetchRefreshToken(r.Context(), th.DB, hashedRefresh)
 	if err != nil {
-		utilities.WriteError(fmt.Sprintf("Error with refresh token %s", err.Error), rw, http.StatusInternalServerError)
+		utilities.WriteError(fmt.Sprintf("Error with refresh token %s", err.Error()), rw, http.StatusInternalServerError)
 		return
 	}
 
@@ -121,7 +123,7 @@ func (th *TodoHandler) Refresh(rw http.ResponseWriter, r *http.Request) {
 	secret := th.TokenConfig.JWTSecret
 	claim, err := utilities.GetClaimFromJWT(refreshCookie.Value, secret)
 	if err != nil {
-		utilities.WriteError(fmt.Sprintf("Error fetching claim from token %s", err.Error), rw, http.StatusInternalServerError)
+		utilities.WriteError(fmt.Sprintf("Error fetching claim from token %s", err.Error()), rw, http.StatusInternalServerError)
 		return
 	}
 	if time.Now().After(savedRefresh.ExpiresAt) || savedRefresh.Revoked {
@@ -129,10 +131,6 @@ func (th *TodoHandler) Refresh(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err != nil {
-		utilities.WriteError(err.Error(), rw, http.StatusInternalServerError)
-		return
-	}
 	user := &models.User{
 		Id:       claim.UserId,
 		UserName: claim.UserName,
@@ -170,4 +168,45 @@ func (th *TodoHandler) Refresh(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utilities.WriteResponse(rw, ResponseMap)
+}
+
+func (th *TodoHandler) ForgotPassword(rw http.ResponseWriter, r *http.Request) {
+	rw.Header().Set("Content-Type", "application/json")
+	body := r.Body
+	forgotRequest := new(models.ForgotPasswordRequest)
+	err := json.NewDecoder(body).Decode(forgotRequest)
+	if err != nil {
+		utilities.WriteError(err.Error(), rw, http.StatusInternalServerError)
+		return
+	}
+	//check if the email exists
+	isEmailExist, err := repository.IsEmailExists(context.Background(), th.DB, forgotRequest)
+	if err != nil {
+		utilities.WriteError(err.Error(), rw, http.StatusInternalServerError)
+		return
+	}
+	ResponseMap := make(map[string]string)
+	if isEmailExist {
+		ResponseMap["message"] = "User exist"
+
+	} else {
+		ResponseMap["message"] = "User doesn't exist"
+	}
+	//sending mail, for testing purpose will enhance.
+	go func() {
+		msg := utilities.GetMailBody("displayTodo@example.com", "Password Reset - Todo", "Your email password link is ready and will be valid for 15 mins")
+		a := th.MailConfig.GetAuth()
+		ctx, cancel := context.WithTimeout(r.Context(), time.Second*15)
+		defer cancel()
+		if err := th.MailConfig.SendMail(ctx, a, []string{"tripathi.ashish29@gmail.com", "cu.16bcs1336@gmail.com"}, msg); err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				log.Printf("Mail sending took too long")
+				return
+			}
+			log.Printf("error sending mail : %s", err.Error())
+		}
+	}()
+
+	utilities.WriteResponse(rw, ResponseMap)
+
 }

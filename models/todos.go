@@ -71,3 +71,7 @@ type JWTClaim struct {
 	Expires_At time.Time
 	jwt.RegisteredClaims
 }
+
+type ForgotPasswordRequest struct {
+	Email string `json:"email"`
+}

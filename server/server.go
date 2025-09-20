@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 	"todos/config"
+	"todos/mail"
 	"todos/router"
 )
 
@@ -23,10 +24,16 @@ func StartServer() {
 		AccessTTL:  appConfig.AuthConfig.AccessTTL,
 		RefreshTTL: appConfig.AuthConfig.RefreshTTL,
 	}
+	mailConfig := &mail.Mail{
+		From:     appConfig.Mail.From,
+		Password: appConfig.Mail.Password,
+		Host:     appConfig.Mail.Host,
+		Port:     appConfig.Mail.Port,
+	}
 	if err != nil {
 		panic("Cannot Start the application")
 	}
-	r := router.NewRouter(db, authConfig)
+	r := router.NewRouter(db, authConfig, mailConfig)
 	serv := http.Server{
 		Addr:    appHostAndPort,
 		Handler: r,

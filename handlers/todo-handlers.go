@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"todos/config"
+	"todos/mail"
 	"todos/models"
 	"todos/repository"
 	"todos/utilities"
@@ -17,12 +18,14 @@ import (
 type TodoHandler struct {
 	DB          *sql.DB
 	TokenConfig *config.AuthConfig
+	MailConfig  *mail.Mail
 }
 
-func NewTodoHandler(DB *sql.DB, authConfig *config.AuthConfig) *TodoHandler {
+func NewTodoHandler(DB *sql.DB, authConfig *config.AuthConfig, mailConfig *mail.Mail) *TodoHandler {
 	todoHandler := new(TodoHandler)
 	todoHandler.DB = DB
 	todoHandler.TokenConfig = authConfig
+	todoHandler.MailConfig = mailConfig
 	return todoHandler
 }
 

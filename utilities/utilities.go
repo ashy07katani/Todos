@@ -3,6 +3,7 @@ package utilities
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 	"todos/config"
@@ -82,4 +83,14 @@ func GetClaimFromJWT(tokenString string, topSecret string) (*models.JWTClaim, er
 		return nil, err
 	}
 	return claim, err
+}
+
+func GetMailBody(to string, subject string, mailBody string) []byte {
+
+	msg := []byte(fmt.Sprintf("From: yourname@gmail.com\r\n"+
+		"To: %s\r\n"+
+		"Subject: %s\r\n"+
+		"\r\n"+ // blank line headers aur body ke beech
+		"%s\r\n", to, subject, mailBody))
+	return msg
 }
