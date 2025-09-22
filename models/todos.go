@@ -75,3 +75,7 @@ type JWTClaim struct {
 type ForgotPasswordRequest struct {
 	Email string `json:"email"`
 }
+
+type UpdatePasswordRequest struct {
+	NewPassword string `json:"newpassword"`
+}

@@ -33,7 +33,7 @@ func StartServer() {
 	if err != nil {
 		panic("Cannot Start the application")
 	}
-	r := router.NewRouter(db, authConfig, mailConfig)
+	r := router.NewRouter(db, authConfig, mailConfig, &appConfig.FrontEndConfig)
 	serv := http.Server{
 		Addr:    appHostAndPort,
 		Handler: r,
@@ -50,7 +50,6 @@ func StartServer() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Existing connections ko close karne ka request
 	if err := serv.Shutdown(ctx); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}

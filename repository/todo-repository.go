@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
+	"time"
 	"todos/models"
 )
 
@@ -58,7 +60,7 @@ func UpdateTodo(ctx context.Context, db *sql.DB, params map[string]interface{}, 
 
 	paramNames := []string{}
 	paramValues := []interface{}{}
-	//$1
+
 	var i int = 1
 	for key, value := range params {
 		paramNames = append(paramNames, fmt.Sprintf("%s=$%d", key, i))
@@ -144,14 +146,118 @@ func InvalidateRefreshToken(ctx context.Context, db *sql.DB, hashedRefresh strin
 	return err
 }
 
-func IsEmailExists(ctx context.Context, db *sql.DB, forgot *models.ForgotPasswordRequest) (bool, error) {
-	query := `select count(*) from users where email = $1`
-	count := -1
-	res := db.QueryRowContext(ctx, query, forgot.Email)
-
-	err := res.Scan(&count)
+func IsEmailExists(ctx context.Context, db *sql.DB, forgot *models.ForgotPasswordRequest) (string, error) {
+	userQuery := `select id from users where email = $1`
+	row := db.QueryRow(userQuery, forgot.Email)
+	userId := ""
+	err := row.Scan(&userId)
 	if err != nil {
-		return false, err
+		return userId, err
 	}
-	return count > 0, nil
+	return userId, nil
+}
+
+func StoreForgotPasswordToken(ctx context.Context, db *sql.DB, request map[string]string) *models.ErrorResponse {
+	email, ok := request["email"]
+	errResponse := new(models.ErrorResponse)
+	if ok {
+		checkExistingTokenQuery := `select expires_at, used from forgotpassword where email= $1 order by created_At desc`
+		row := db.QueryRowContext(ctx, checkExistingTokenQuery, email)
+		var expires_At time.Time
+		var used bool
+		if err := row.Scan(&expires_At, &used); err != nil {
+			if !errors.Is(err, sql.ErrNoRows) {
+				errResponse.Message = err.Error()
+				errResponse.Status = http.StatusInternalServerError
+				return errResponse
+			}
+		} else {
+			if expires_At.After(time.Now()) && !used {
+				errResponse.Message = "an active link has already been sent to your mail, for new token wait for sometime"
+				errResponse.Status = http.StatusBadRequest
+				return errResponse
+			}
+		}
+		forgotPasswordQuery := `insert into forgotpassword (userid,email,token) values ($1, $2, $3)`
+		_, err := db.ExecContext(ctx, forgotPasswordQuery, request["userid"], email, request["token"])
+		if err != nil {
+			errResponse.Message = err.Error()
+			errResponse.Status = http.StatusInternalServerError
+			return errResponse
+		}
+	} else {
+		errResponse.Message = "no email received from request"
+		errResponse.Status = http.StatusBadRequest
+		return errResponse
+	}
+	return nil
+}
+
+func UpdatePassword(ctx context.Context, db *sql.DB, request *models.UpdatePasswordRequest, token string) *models.ErrorResponse {
+	transaction, err := db.BeginTx(ctx, nil)
+	errResponse := new(models.ErrorResponse)
+	if err != nil {
+		errResponse.Message = err.Error()
+		errResponse.Status = http.StatusInternalServerError
+		return errResponse
+	}
+	defer transaction.Rollback()
+	query := `select userid, expires_At, used from forgotpassword where token=$1 for update`
+	row := transaction.QueryRowContext(ctx, query, token)
+	userId := ""
+	expiresAt := time.Now()
+	used := false
+	if err = row.Scan(&userId, &expiresAt, &used); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			errResponse.Message = "no rows with this token"
+			errResponse.Status = http.StatusNotFound
+			return errResponse
+		}
+		errResponse.Message = fmt.Sprintf("something went wrong while processing the token : %s", err.Error())
+		errResponse.Status = http.StatusInternalServerError
+		return errResponse
+
+	}
+
+	if expiresAt.Before(time.Now()) || used {
+		errResponse.Message = "provided token has either already been used or is expired"
+		errResponse.Status = http.StatusInternalServerError
+		return errResponse
+	}
+
+	updatePasswordQuery := `update users set hashpassword = $1 where id = $2`
+	rows, err := transaction.ExecContext(ctx, updatePasswordQuery, request.NewPassword, userId)
+	if err != nil {
+		errResponse.Message = "something went wrong while updating the password"
+		errResponse.Status = http.StatusInternalServerError
+		return errResponse
+	}
+	rowsAffected, _ := rows.RowsAffected()
+	if rowsAffected == 0 {
+		errResponse.Message = "no user affected"
+		errResponse.Status = http.StatusInternalServerError
+		return errResponse
+	}
+
+	changeTokenStatusQuery := `update forgotpassword set used = true where token = $1`
+	rows, err = transaction.ExecContext(ctx, changeTokenStatusQuery, token)
+	if err != nil {
+		errResponse.Message = "something went wrong while updating the password"
+		errResponse.Status = http.StatusInternalServerError
+		return errResponse
+	}
+	rowsAffected, _ = rows.RowsAffected()
+	if rowsAffected == 0 {
+		errResponse.Message = "no password affected"
+		errResponse.Status = http.StatusInternalServerError
+		return errResponse
+	}
+
+	err = transaction.Commit()
+	if err != nil {
+		errResponse.Message = "update password has failed, rolling back"
+		errResponse.Status = http.StatusInternalServerError
+		return errResponse
+	}
+	return nil
 }

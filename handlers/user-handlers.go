@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -16,7 +17,6 @@ import (
 )
 
 func (th *TodoHandler) CreateUser(rw http.ResponseWriter, r *http.Request) {
-	// you will take fields like username, password, email from the request
 	body := r.Body
 	user := new(models.SignupRequest)
 	err := json.NewDecoder(body).Decode(user)
@@ -24,7 +24,6 @@ func (th *TodoHandler) CreateUser(rw http.ResponseWriter, r *http.Request) {
 		utilities.WriteError("unable to read user signup request", rw, http.StatusInternalServerError)
 		return
 	}
-	// create user object that you could send to database, for that you would need to encrypt the password
 	userDBobj := new(models.User)
 	hashPassword, err := utilities.HashPassword(user.Password)
 	if err != nil {
@@ -116,10 +115,6 @@ func (th *TodoHandler) Refresh(rw http.ResponseWriter, r *http.Request) {
 		utilities.WriteError(fmt.Sprintf("Error with refresh token %s", err.Error()), rw, http.StatusInternalServerError)
 		return
 	}
-
-	//fetch the userID using that refresh token
-	//create an access token and refresh token
-	//invalidate the previous refresh token, use hash value to query the db and turn the value to false
 	secret := th.TokenConfig.JWTSecret
 	claim, err := utilities.GetClaimFromJWT(refreshCookie.Value, secret)
 	if err != nil {
@@ -145,7 +140,7 @@ func (th *TodoHandler) Refresh(rw http.ResponseWriter, r *http.Request) {
 		utilities.WriteError(err.Error(), rw, http.StatusInternalServerError)
 		return
 	}
-	// invalidate token
+
 	err = repository.InvalidateRefreshToken(r.Context(), th.DB, hashedRefresh)
 	if err != nil {
 		utilities.WriteError("error invalidating refresh token", rw, http.StatusUnauthorized)
@@ -179,23 +174,30 @@ func (th *TodoHandler) ForgotPassword(rw http.ResponseWriter, r *http.Request) {
 		utilities.WriteError(err.Error(), rw, http.StatusInternalServerError)
 		return
 	}
-	//check if the email exists
-	isEmailExist, err := repository.IsEmailExists(context.Background(), th.DB, forgotRequest)
+
+	userId, err := repository.IsEmailExists(context.Background(), th.DB, forgotRequest)
 	if err != nil {
 		utilities.WriteError(err.Error(), rw, http.StatusInternalServerError)
 		return
 	}
-	ResponseMap := make(map[string]string)
-	if isEmailExist {
-		ResponseMap["message"] = "User exist"
 
-	} else {
-		ResponseMap["message"] = "User doesn't exist"
+	forgotToken := rand.Text()
+	shaToken := sha256.Sum256([]byte(forgotToken))
+	shaTokenString := hex.EncodeToString(shaToken[:])
+	forgotPassswordRequestMap := make(map[string]string)
+	forgotPassswordRequestMap["email"] = forgotRequest.Email
+	forgotPassswordRequestMap["token"] = shaTokenString
+	forgotPassswordRequestMap["userid"] = userId
+	errResponse := repository.StoreForgotPasswordToken(r.Context(), th.DB, forgotPassswordRequestMap)
+	if errResponse != nil {
+		utilities.WriteError(errResponse.Message, rw, errResponse.Status)
+		return
 	}
-	//sending mail, for testing purpose will enhance.
 	go func() {
-		msg := utilities.GetMailBody("displayTodo@example.com", "Password Reset - Todo", "Your email password link is ready and will be valid for 15 mins")
+		forgotPasswordLink := fmt.Sprintf("%s%s?token=%s", th.FrontEndConfig.FrontEndDomain, th.FrontEndConfig.ResetPath, forgotToken)
+		msg := utilities.GetMailBody("displayTodo@example.com", "Password Reset - Todo", fmt.Sprintf("Your password reset link is ready : %s ,and will be valid for 15 mins", forgotPasswordLink))
 		a := th.MailConfig.GetAuth()
+
 		ctx, cancel := context.WithTimeout(r.Context(), time.Second*15)
 		defer cancel()
 		if err := th.MailConfig.SendMail(ctx, a, []string{"tripathi.ashish29@gmail.com", "cu.16bcs1336@gmail.com"}, msg); err != nil {
@@ -206,7 +208,39 @@ func (th *TodoHandler) ForgotPassword(rw http.ResponseWriter, r *http.Request) {
 			log.Printf("error sending mail : %s", err.Error())
 		}
 	}()
+	responseMap := make(map[string]string)
+	responseMap["message"] = "A mail has been sent with the reset password link to your registered Email. Kindly check."
+	utilities.WriteResponse(rw, responseMap)
 
-	utilities.WriteResponse(rw, ResponseMap)
+}
 
+func (th *TodoHandler) UpdatePassword(rw http.ResponseWriter, r *http.Request) {
+
+	values := r.URL.Query()
+	fetchedToken := values.Get("token")
+	tokenbyte := sha256.Sum256([]byte(fetchedToken))
+	token := hex.EncodeToString(tokenbyte[:])
+	if token == "" {
+		utilities.WriteError("no token has been passed to the request", rw, http.StatusInternalServerError)
+		return
+	}
+
+	body := r.Body
+	newPassword := new(models.UpdatePasswordRequest)
+	if err := json.NewDecoder(body).Decode(newPassword); err != nil {
+		utilities.WriteError("error processing new password from request", rw, http.StatusInternalServerError)
+		return
+	}
+	hashPassword, err := utilities.HashPassword(newPassword.NewPassword)
+	if err != nil {
+		utilities.WriteError("error occured while processing the password for update request. ", rw, http.StatusInternalServerError)
+		return
+	}
+	newPassword.NewPassword = hashPassword
+
+	errResponse := repository.UpdatePassword(r.Context(), th.DB, newPassword, token)
+	if errResponse != nil {
+		utilities.WriteError(errResponse.Message, rw, errResponse.Status)
+		return
+	}
 }

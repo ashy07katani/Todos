@@ -35,11 +35,17 @@ type AuthConfig struct {
 }
 
 type AppConfig struct {
-	AuthConfig AuthConfig
-	Mail       mail.Mail `envPrefix:"MAIL_"`
-	DBconfig   DBconfig  `envPrefix:"DB_"`
-	Host       string    `env:"APP_HOST"`
-	Port       int       `env:"APP_PORT"`
+	AuthConfig     AuthConfig
+	FrontEndConfig FrontEndConfig
+	Mail           mail.Mail `envPrefix:"MAIL_"`
+	DBconfig       DBconfig  `envPrefix:"DB_"`
+	Host           string    `env:"APP_HOST"`
+	Port           int       `env:"APP_PORT"`
+}
+
+type FrontEndConfig struct {
+	FrontEndDomain string `env:"FRONTEND_DOMAIN"`
+	ResetPath      string `env:"FRONTEND_RESET_PATH"`
 }
 
 func DBinit(dbconfig *DBconfig) (*sql.DB, error) {

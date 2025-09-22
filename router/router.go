@@ -11,8 +11,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func NewRouter(db *sql.DB, authConfig *config.AuthConfig, mailConfig *mail.Mail) *mux.Router {
-	todoHandler := handlers.NewTodoHandler(db, authConfig, mailConfig)
+func NewRouter(db *sql.DB, authConfig *config.AuthConfig, mailConfig *mail.Mail, frontEndConfig *config.FrontEndConfig) *mux.Router {
+	todoHandler := handlers.NewTodoHandler(db, authConfig, mailConfig, frontEndConfig)
 	log.Println(todoHandler.MailConfig.From)
 	r := mux.NewRouter()
 	r.HandleFunc("/todos", todoHandler.ListAllTodos).Methods(http.MethodGet)
@@ -26,6 +26,7 @@ func NewRouter(db *sql.DB, authConfig *config.AuthConfig, mailConfig *mail.Mail)
 	r.HandleFunc("/users/login", todoHandler.Login).Methods(http.MethodPost)
 	r.HandleFunc("/users/refresh", todoHandler.Refresh).Methods(http.MethodPost)
 	r.HandleFunc("/users/forgot-password", todoHandler.ForgotPassword).Methods(http.MethodPost)
+	r.HandleFunc("/users/update-password", todoHandler.UpdatePassword).Methods(http.MethodPatch)
 	return r
-	//fmt.Println("starting server at port 6161")
+
 }

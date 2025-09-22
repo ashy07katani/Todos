@@ -16,16 +16,18 @@ import (
 )
 
 type TodoHandler struct {
-	DB          *sql.DB
-	TokenConfig *config.AuthConfig
-	MailConfig  *mail.Mail
+	DB             *sql.DB
+	TokenConfig    *config.AuthConfig
+	MailConfig     *mail.Mail
+	FrontEndConfig *config.FrontEndConfig
 }
 
-func NewTodoHandler(DB *sql.DB, authConfig *config.AuthConfig, mailConfig *mail.Mail) *TodoHandler {
+func NewTodoHandler(DB *sql.DB, authConfig *config.AuthConfig, mailConfig *mail.Mail, frontEndConfig *config.FrontEndConfig) *TodoHandler {
 	todoHandler := new(TodoHandler)
 	todoHandler.DB = DB
 	todoHandler.TokenConfig = authConfig
 	todoHandler.MailConfig = mailConfig
+	todoHandler.FrontEndConfig = frontEndConfig
 	return todoHandler
 }
 

@@ -90,7 +90,7 @@ func GetMailBody(to string, subject string, mailBody string) []byte {
 	msg := []byte(fmt.Sprintf("From: yourname@gmail.com\r\n"+
 		"To: %s\r\n"+
 		"Subject: %s\r\n"+
-		"\r\n"+ // blank line headers aur body ke beech
+		"\r\n"+
 		"%s\r\n", to, subject, mailBody))
 	return msg
 }
