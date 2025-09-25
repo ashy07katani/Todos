@@ -11,6 +11,7 @@ import (
 	"todos/models"
 	"todos/repository"
 	"todos/utilities"
+	validateapp "todos/validator"
 
 	"github.com/gorilla/mux"
 )
@@ -90,6 +91,11 @@ func (th *TodoHandler) CreateTask(rw http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(body).Decode(v)
 	if err != nil {
 		utilities.WriteError("error while creating task.", rw, http.StatusInternalServerError)
+		return
+	}
+	err = validateapp.ValidateStruct(v)
+	if err != nil {
+		utilities.WriteError(fmt.Sprintf("error while validating the input: %s", err.Error()), rw, http.StatusBadRequest)
 		return
 	}
 	user_id := r.Context().Value("userId").(string)

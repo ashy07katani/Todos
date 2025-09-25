@@ -14,14 +14,21 @@ import (
 	"todos/models"
 	"todos/repository"
 	"todos/utilities"
+	validateapp "todos/validator"
 )
 
 func (th *TodoHandler) CreateUser(rw http.ResponseWriter, r *http.Request) {
+	rw.Header().Set("Content-Type", "application/json")
 	body := r.Body
 	user := new(models.SignupRequest)
 	err := json.NewDecoder(body).Decode(user)
 	if err != nil {
 		utilities.WriteError("unable to read user signup request", rw, http.StatusInternalServerError)
+		return
+	}
+	err = validateapp.ValidateStruct(user)
+	if err != nil {
+		utilities.WriteError(fmt.Sprintf("error while validating the input: %s", err.Error()), rw, http.StatusBadRequest)
 		return
 	}
 	userDBobj := new(models.User)
@@ -40,7 +47,7 @@ func (th *TodoHandler) CreateUser(rw http.ResponseWriter, r *http.Request) {
 	}
 	rw.WriteHeader(http.StatusCreated)
 	response := models.CreateResponse{
-		Message: "Todo created successfully",
+		Message: "Signup done successfully",
 		Id:      user.UserName,
 	}
 	utilities.WriteResponse(rw, response)
@@ -55,7 +62,11 @@ func (th *TodoHandler) Login(rw http.ResponseWriter, r *http.Request) {
 		utilities.WriteError("error occured while processing the request for Login. ", rw, http.StatusInternalServerError)
 		return
 	}
-
+	err = validateapp.ValidateStruct(loginRequest)
+	if err != nil {
+		utilities.WriteError(fmt.Sprintf("error while validating the input: %s", err.Error()), rw, http.StatusBadRequest)
+		return
+	}
 	user, err := repository.FetchUserWithUserID(r.Context(), th.DB, loginRequest.UserName)
 	if err != nil {
 		utilities.WriteError(err.Error(), rw, http.StatusInternalServerError)
@@ -174,6 +185,11 @@ func (th *TodoHandler) ForgotPassword(rw http.ResponseWriter, r *http.Request) {
 		utilities.WriteError(err.Error(), rw, http.StatusInternalServerError)
 		return
 	}
+	err = validateapp.ValidateStruct(forgotRequest)
+	if err != nil {
+		utilities.WriteError(fmt.Sprintf("error while validating the input: %s", err.Error()), rw, http.StatusBadRequest)
+		return
+	}
 
 	userId, err := repository.IsEmailExists(context.Background(), th.DB, forgotRequest)
 	if err != nil {
@@ -229,6 +245,11 @@ func (th *TodoHandler) UpdatePassword(rw http.ResponseWriter, r *http.Request) {
 	newPassword := new(models.UpdatePasswordRequest)
 	if err := json.NewDecoder(body).Decode(newPassword); err != nil {
 		utilities.WriteError("error processing new password from request", rw, http.StatusInternalServerError)
+		return
+	}
+	err := validateapp.ValidateStruct(newPassword)
+	if err != nil {
+		utilities.WriteError(fmt.Sprintf("error while validating the input: %s", err.Error()), rw, http.StatusBadRequest)
 		return
 	}
 	hashPassword, err := utilities.HashPassword(newPassword.NewPassword)

@@ -15,10 +15,14 @@ const (
 )
 
 type Todo struct {
-	Name        string    `json:"name"`
+	Name        string    `json:"name" validate:"required"`
 	Description string    `json:"description"`
 	TaskStatus  Status    `json:"status"`
 	CreatedAt   time.Time `json:"createdAt"`
+}
+
+func (s *Todo) FuncToImplement() {
+
 }
 
 type GetTodoResponse struct {
@@ -46,9 +50,13 @@ type SignupResponse struct {
 }
 
 type SignupRequest struct {
-	UserName string `json:"username"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	UserName string `json:"username" validate:"required,min=3"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,min=8"`
+}
+
+func (s *SignupRequest) FuncToImplement() {
+
 }
 
 type User struct {
@@ -60,8 +68,12 @@ type User struct {
 }
 
 type LoginUser struct {
-	UserName string `json:"username"`
-	Password string `json:"password"`
+	UserName string `json:"username" validate:"required"`
+	Password string `json:"password" validate:"required"`
+}
+
+func (s *LoginUser) FuncToImplement() {
+
 }
 
 type SaveRefresh struct {
@@ -79,9 +91,17 @@ type JWTClaim struct {
 }
 
 type ForgotPasswordRequest struct {
-	Email string `json:"email"`
+	Email string `json:"email" validate:"required,email"`
+}
+
+func (s *ForgotPasswordRequest) FuncToImplement() {
+
 }
 
 type UpdatePasswordRequest struct {
-	NewPassword string `json:"newpassword"`
+	NewPassword string `json:"newpassword" validate:"required,min=8"`
+}
+
+func (s *UpdatePasswordRequest) FuncToImplement() {
+
 }
