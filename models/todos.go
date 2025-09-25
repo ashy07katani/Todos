@@ -15,13 +15,19 @@ const (
 )
 
 type Todo struct {
-	Id          string    `json:"id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 	TaskStatus  Status    `json:"status"`
 	CreatedAt   time.Time `json:"createdAt"`
 }
 
+type GetTodoResponse struct {
+	Id          string    `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	TaskStatus  Status    `json:"status"`
+	CreatedAt   time.Time `json:"createdAt"`
+}
 type ErrorResponse struct {
 	Message string `json:"message"`
 	Status  int    `json:"status"`

@@ -52,9 +52,9 @@ func (th *TodoHandler) ListAllTodos(rw http.ResponseWriter, r *http.Request) {
 		}
 		offset = (pageInt - 1) * limitInt
 	}
-
+	userId := r.Context().Value("userId").(string)
 	ctx := r.Context()
-	todos, err := repository.GetAllTodos(ctx, th.DB, offset, limitInt)
+	todos, err := repository.GetAllTodos(ctx, th.DB, offset, limitInt, userId)
 	if err != nil {
 		utilities.WriteError(fmt.Sprintf("Error fetching the todos %s", err.Error()), rw, http.StatusInternalServerError)
 		return
@@ -71,7 +71,8 @@ func (th *TodoHandler) FetchTodoByID(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(r)
 	id := vars["id"]
-	todo, _ := repository.GetTodoByID(r.Context(), th.DB, id)
+	user_id := r.Context().Value("userId").(string)
+	todo, _ := repository.GetTodoByID(r.Context(), th.DB, id, user_id)
 	if todo != nil {
 		json.NewEncoder(rw).Encode(todo)
 	} else {
@@ -91,7 +92,8 @@ func (th *TodoHandler) CreateTask(rw http.ResponseWriter, r *http.Request) {
 		utilities.WriteError("error while creating task.", rw, http.StatusInternalServerError)
 		return
 	}
-	err = repository.CreateTodo(r.Context(), th.DB, v)
+	user_id := r.Context().Value("userId").(string)
+	err = repository.CreateTodo(r.Context(), th.DB, v, user_id)
 	if err != nil {
 		utilities.WriteError(fmt.Sprintf("error while creating task, at Database layer: %s", err.Error()), rw, http.StatusInternalServerError)
 		return
@@ -99,7 +101,6 @@ func (th *TodoHandler) CreateTask(rw http.ResponseWriter, r *http.Request) {
 	rw.WriteHeader(http.StatusCreated)
 	response := models.CreateResponse{
 		Message: "Todo created successfully",
-		Id:      v.Id,
 	}
 	utilities.WriteResponse(rw, response)
 
@@ -109,7 +110,8 @@ func (th *TodoHandler) DeleteTask(rw http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 	rw.Header().Set("Content-Type", "application/json")
-	err := repository.DeleteTodo(r.Context(), th.DB, id)
+	user_id := r.Context().Value("userId").(string)
+	err := repository.DeleteTodo(r.Context(), th.DB, id, user_id)
 	if err != nil {
 		utilities.WriteError(fmt.Sprintf("error while deleting task, at Database layer: %s", err.Error()), rw, http.StatusInternalServerError)
 		return
@@ -128,7 +130,8 @@ func (th *TodoHandler) UpdateTask(rw http.ResponseWriter, r *http.Request) {
 		utilities.WriteError(fmt.Sprintf("error while decoding request: %s", err.Error()), rw, http.StatusInternalServerError)
 		return
 	}
-	err = repository.UpdateTodo(r.Context(), th.DB, params, id)
+	user_id := r.Context().Value("userId").(string)
+	err = repository.UpdateTodo(r.Context(), th.DB, params, id, user_id)
 	if err != nil {
 		utilities.WriteError(fmt.Sprintf("error while updating database: %s", err.Error()), rw, http.StatusInternalServerError)
 		return
@@ -159,7 +162,8 @@ func (th *TodoHandler) SearchTask(rw http.ResponseWriter, r *http.Request) {
 		}
 		offset = (pageInt - 1) * limitInt
 	}
-	todo, err := repository.SearchTodo(r.Context(), th.DB, searchParam, limitInt, offset)
+	user_id := r.Context().Value("userId").(string)
+	todo, err := repository.SearchTodo(r.Context(), th.DB, searchParam, limitInt, offset, user_id)
 	if todo != nil {
 		json.NewEncoder(rw).Encode(todo)
 	} else {

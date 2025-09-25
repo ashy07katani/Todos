@@ -11,16 +11,16 @@ import (
 	"todos/models"
 )
 
-func GetAllTodos(ctx context.Context, db *sql.DB, offset int, limit int) ([]*models.Todo, error) {
-	query := `select id,name,description,status,created_at from todo order by created_at desc limit $1 offset $2`
-	rows, err := db.QueryContext(ctx, query, limit, offset)
+func GetAllTodos(ctx context.Context, db *sql.DB, offset int, limit int, userId string) ([]*models.GetTodoResponse, error) {
+	query := `select id,name,description,status,created_at from todo where user_id = $1 order by created_at desc limit $2 offset $3`
+	rows, err := db.QueryContext(ctx, query, userId, limit, offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var todos []*models.Todo
+	var todos []*models.GetTodoResponse
 	for rows.Next() {
-		var todo models.Todo
+		var todo models.GetTodoResponse
 		err = rows.Scan(&todo.Id, &todo.Name, &todo.Description, &todo.TaskStatus, &todo.CreatedAt)
 		if err != nil {
 			return nil, err
@@ -30,10 +30,10 @@ func GetAllTodos(ctx context.Context, db *sql.DB, offset int, limit int) ([]*mod
 	return todos, nil
 }
 
-func GetTodoByID(ctx context.Context, db *sql.DB, id string) (*models.Todo, error) {
-	var todo = new(models.Todo)
-	query := `select id,name,description,status,created_at from todo where id= $1`
-	row := db.QueryRowContext(ctx, query, id)
+func GetTodoByID(ctx context.Context, db *sql.DB, id string, user_id string) (*models.GetTodoResponse, error) {
+	var todo = new(models.GetTodoResponse)
+	query := `select id,name,description,status,created_at from todo where id= $1 and user_id =$2`
+	row := db.QueryRowContext(ctx, query, id, user_id)
 	err := row.Scan(&todo.Id, &todo.Name, &todo.Description, &todo.TaskStatus, &todo.CreatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -44,19 +44,23 @@ func GetTodoByID(ctx context.Context, db *sql.DB, id string) (*models.Todo, erro
 	return todo, nil
 }
 
-func CreateTodo(ctx context.Context, db *sql.DB, todo *models.Todo) error {
-	query := `insert into todo (id, name, description) values ($1, $2, $3)`
-	_, err := db.ExecContext(ctx, query, todo.Id, todo.Name, todo.Description)
+func CreateTodo(ctx context.Context, db *sql.DB, todo *models.Todo, user_id string) error {
+	query := `insert into todo (name, description, user_id) values ($1, $2, $3)`
+	_, err := db.ExecContext(ctx, query, todo.Name, todo.Description, user_id)
 	return err
 }
 
-func DeleteTodo(ctx context.Context, db *sql.DB, id string) error {
-	query := `delete from todo where id=$1;`
-	_, err := db.ExecContext(ctx, query, id)
+func DeleteTodo(ctx context.Context, db *sql.DB, id string, user_id string) error {
+	query := `delete from todo where id=$1 and user_id=$2;`
+	rows, _ := db.ExecContext(ctx, query, id, user_id)
+	rowCount, err := rows.RowsAffected()
+	if rowCount == 0 {
+		return fmt.Errorf("no rows found for this user with this Id: %s", id)
+	}
 	return err
 }
 
-func UpdateTodo(ctx context.Context, db *sql.DB, params map[string]interface{}, id string) error {
+func UpdateTodo(ctx context.Context, db *sql.DB, params map[string]interface{}, id string, user_id string) error {
 
 	paramNames := []string{}
 	paramValues := []interface{}{}
@@ -67,8 +71,10 @@ func UpdateTodo(ctx context.Context, db *sql.DB, params map[string]interface{}, 
 		paramValues = append(paramValues, value)
 		i++
 	}
-	query := fmt.Sprintf(`update todo set %s where id = $%d`, strings.Join(paramNames, ","), i)
+	j := i + 1
+	query := fmt.Sprintf(`update todo set %s where id = $%d and user_id = $%d`, strings.Join(paramNames, ","), i, j)
 	paramValues = append(paramValues, id)
+	paramValues = append(paramValues, user_id)
 	res, err := db.ExecContext(ctx, query, paramValues...)
 	rowsAffected, _ := res.RowsAffected()
 	if rowsAffected == 0 {
@@ -78,17 +84,17 @@ func UpdateTodo(ctx context.Context, db *sql.DB, params map[string]interface{}, 
 
 }
 
-func SearchTodo(ctx context.Context, db *sql.DB, searchParam string, limit int, offset int) ([]*models.Todo, error) {
-	query := `select id, name, description, status, created_at from todo where to_tsvector('simple', name || ' ' || description) @@ to_tsquery('simple', $1) limit $2 offset $3`
+func SearchTodo(ctx context.Context, db *sql.DB, searchParam string, limit int, offset int, user_id string) ([]*models.GetTodoResponse, error) {
+	query := `select id, name, description, status, created_at from todo where user_id =$1 to_tsvector('simple', name || ' ' || description) @@ to_tsquery('simple', $2) limit $3 offset $4`
 	fmt.Println(query)
-	var todos []*models.Todo
-	rows, err := db.QueryContext(ctx, query, searchParam, limit, offset)
+	var todos []*models.GetTodoResponse
+	rows, err := db.QueryContext(ctx, query, user_id, searchParam, limit, offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var todo models.Todo
+		var todo models.GetTodoResponse
 		err = rows.Scan(&todo.Id, &todo.Name, &todo.Description, &todo.TaskStatus, &todo.CreatedAt)
 		if err != nil {
 			return nil, err
