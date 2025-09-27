@@ -34,6 +34,10 @@ func NewTodoHandler(DB *sql.DB, authConfig *config.AuthConfig, mailConfig *mail.
 
 func (th *TodoHandler) ListAllTodos(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
+	if r.Method == http.MethodOptions {
+		rw.WriteHeader(http.StatusOK)
+		return
+	}
 	queryMap := r.URL.Query()
 	page := queryMap.Get("page")
 	limit := queryMap.Get("limit")
@@ -70,6 +74,10 @@ func (th *TodoHandler) ListAllTodos(rw http.ResponseWriter, r *http.Request) {
 
 func (th *TodoHandler) FetchTodoByID(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
+	if r.Method == http.MethodOptions {
+		rw.WriteHeader(http.StatusOK)
+		return
+	}
 	vars := mux.Vars(r)
 	id := vars["id"]
 	user_id := r.Context().Value("userId").(string)
@@ -86,6 +94,10 @@ func (th *TodoHandler) FetchTodoByID(rw http.ResponseWriter, r *http.Request) {
 
 func (th *TodoHandler) CreateTask(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
+	if r.Method == http.MethodOptions {
+		rw.WriteHeader(http.StatusOK)
+		return
+	}
 	body := r.Body
 	v := new(models.Todo)
 	err := json.NewDecoder(body).Decode(v)
@@ -113,9 +125,13 @@ func (th *TodoHandler) CreateTask(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (th *TodoHandler) DeleteTask(rw http.ResponseWriter, r *http.Request) {
+	rw.Header().Set("Content-Type", "application/json")
+	if r.Method == http.MethodOptions {
+		rw.WriteHeader(http.StatusOK)
+		return
+	}
 	vars := mux.Vars(r)
 	id := vars["id"]
-	rw.Header().Set("Content-Type", "application/json")
 	user_id := r.Context().Value("userId").(string)
 	err := repository.DeleteTodo(r.Context(), th.DB, id, user_id)
 	if err != nil {
@@ -127,6 +143,10 @@ func (th *TodoHandler) DeleteTask(rw http.ResponseWriter, r *http.Request) {
 
 func (th *TodoHandler) UpdateTask(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
+	if r.Method == http.MethodOptions {
+		rw.WriteHeader(http.StatusOK)
+		return
+	}
 	params := make(map[string]interface{})
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -146,8 +166,11 @@ func (th *TodoHandler) UpdateTask(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (th *TodoHandler) SearchTask(rw http.ResponseWriter, r *http.Request) {
-	fmt.Println("entering SearchTask")
 	rw.Header().Set("Content-Type", "application/json")
+	if r.Method == http.MethodOptions {
+		rw.WriteHeader(http.StatusOK)
+		return
+	}
 	queryMap := r.URL.Query()
 	searchParam := queryMap.Get("query")
 	page := queryMap.Get("page")

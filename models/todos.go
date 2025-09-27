@@ -38,8 +38,8 @@ type ErrorResponse struct {
 }
 
 type CreateResponse struct {
-	Message string `json:"message"`
-	Id      string `json:"id"`
+	Message  string `json:"message"`
+	UserName string `json:"username"`
 }
 
 type SignupResponse struct {

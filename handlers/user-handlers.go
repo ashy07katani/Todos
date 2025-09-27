@@ -19,6 +19,10 @@ import (
 
 func (th *TodoHandler) CreateUser(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
+	if r.Method == http.MethodOptions {
+		rw.WriteHeader(http.StatusOK)
+		return
+	}
 	body := r.Body
 	user := new(models.SignupRequest)
 	err := json.NewDecoder(body).Decode(user)
@@ -47,14 +51,18 @@ func (th *TodoHandler) CreateUser(rw http.ResponseWriter, r *http.Request) {
 	}
 	rw.WriteHeader(http.StatusCreated)
 	response := models.CreateResponse{
-		Message: "Signup done successfully",
-		Id:      user.UserName,
+		Message:  "Signup done successfully",
+		UserName: user.UserName,
 	}
 	utilities.WriteResponse(rw, response)
 }
 
 func (th *TodoHandler) Login(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
+	if r.Method == http.MethodOptions {
+		rw.WriteHeader(http.StatusOK)
+		return
+	}
 	loginRequest := new(models.LoginUser)
 	body := r.Body
 	err := json.NewDecoder(body).Decode(loginRequest)
@@ -112,6 +120,10 @@ func (th *TodoHandler) Login(rw http.ResponseWriter, r *http.Request) {
 
 func (th *TodoHandler) Refresh(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
+	if r.Method == http.MethodOptions {
+		rw.WriteHeader(http.StatusOK)
+		return
+	}
 	refreshCookie, err := r.Cookie("refresh-token")
 	if err != nil {
 		utilities.WriteError(fmt.Sprintf("cannot read cookie. %s", err.Error()), rw, http.StatusInternalServerError)
@@ -178,6 +190,10 @@ func (th *TodoHandler) Refresh(rw http.ResponseWriter, r *http.Request) {
 
 func (th *TodoHandler) ForgotPassword(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
+	if r.Method == http.MethodOptions {
+		rw.WriteHeader(http.StatusOK)
+		return
+	}
 	body := r.Body
 	forgotRequest := new(models.ForgotPasswordRequest)
 	err := json.NewDecoder(body).Decode(forgotRequest)
@@ -231,7 +247,11 @@ func (th *TodoHandler) ForgotPassword(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (th *TodoHandler) UpdatePassword(rw http.ResponseWriter, r *http.Request) {
-
+	rw.Header().Set("Content-Type", "application/json")
+	if r.Method == http.MethodOptions {
+		rw.WriteHeader(http.StatusOK)
+		return
+	}
 	values := r.URL.Query()
 	fetchedToken := values.Get("token")
 	tokenbyte := sha256.Sum256([]byte(fetchedToken))
